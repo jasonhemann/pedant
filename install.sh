@@ -11,16 +11,18 @@ CURL_INSTALL="${SCRIPT_DIR}/.curl_trash/"
 
 GIT_INSTALL="${SCRIPT_DIR}/.git_trash/"
 GIT_GIT_REPO="git://git.kernel.org/pub/scm/git/git.git"
+GIT_EXEC_LOC="${HOME}/.local/bin/"
 
 DICTION_VERSION="1.11"
 DICTION_SOURCE="https://ftp.gnu.org/gnu/diction/"
 DICTION_INSTALL="${SCRIPT_DIR}/.diction_trash/"
 DICTION_FILE="diction-${DICTION_VERSION}"
 
+VCPKG_GIT_REPO="https://github.com/microsoft/vcpkg"
 VCPKG_INSTALL="${SCRIPT_DIR}/.vcpkg_trash/"
 
 ENCHANT2_VERSION="2.2.15"
-ENCHANT2_SOURCE="https://github.com/AbiWord/enchant/releases/download/v${ENCHANT2_VERSION}/"
+ENCHAT2_GIT_REPO="https://github.com/AbiWord/enchant.git"
 ENCHANT2_INSTALL="${SCRIPT_DIR}/.enchant-2_trash/"
 ENCHANT2_FILE="enchant-${ENCHANT2_VERSION}"
 
@@ -44,24 +46,35 @@ ESPEAK_DIR="espeak-ng"
 ANORAK_INSTALL="${SCRIPT_DIR}/.anorak_trash/"
 
 echo "Ensure that ~/.local/ subdirectories are on your path!"
+echo "PATH=~/.local/bin/:~/.local/etc/:~/.local/include/:~/.local/lib/:~/.local/libexec/:~/.local/share/:$PATH"
 
 # https://www.gnu.org/software/libtool/manual/html_node/Invoking-libtoolize.html
 # LIBTOOLIZE, and the LTLIBRARIES 
 # autoreconf -fi
 
-#    git clone ${CURL_GIT_REPO} ${CURL_INSTALL}
-
-# if # (test $(git --version) -le <tagged-version>)
-# then
+if (test ! -x $(${GIT_EXEC_LOC}/git)) # &&  --version
+then
     git clone ${GIT_GIT_REPO} ${GIT_INSTALL}
     pushd ${GIT_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
     libtoolize -i -f 
-    HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make
+    HOME=${HOME}/.local/ NO_TCLTK=true make 
     HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make install
-# fi     
+fi     
 
-return 1
+if (test ! -x "$(which vcpkg)")
+then
+    echo "Downloading vcpkg, for easy nuspell installation"
+    git clone ${VCPKG_GIT_REPO} ${VCPKG_INSTALL}
+    pushd ${VCPKG_INSTALL}
+    ./bootstrap-vcpkg.sh
+    ./vcpkg install curl
+    pushd ${GIT_INSTALL}
+    PATH=${VCPKG_INSTALL}/installed/x64-linux/share/:$PATH HOME=${HOME}/.local/ NO_TCLTK=true make
+    PATH=${VCPKG_INSTALL}/installed/x64-linux/share/:$PATH HOME=${HOME}/.local/ NO_TCLTK=true make install
+    pushd ${VCPKG_INSTALL}
+    # ./vcpkg install nuspell # Currently breaks, perhaps vcpkg bug
+fi
     
 if (test ! -x "$(which style)") && (test ! -x "$(which diction)")
 then
@@ -74,30 +87,22 @@ then
     make install 
 fi
 
-if (test ! -x "$(which vcpkg)")
-then
-    echo "Downloading vcpkg, for easy nuspell installation"
-    git clone https://github.com/microsoft/vcpkg ${VCPKG_INSTALL}
-    pushd ${VCPKG_INSTALL}
-    # git=${HOME}/.local/bin/git
-    ./bootstrap-vcpkg.sh
-    # git=${HOME}/.local/bin/git
-    ./vcpkg install nuspell
-fi
-
 # Waiting on nuspell to finish setup for enchant-2
 # https://github.com/AbiWord/enchant.git
 # Might need nuspell by itself on the command line.
 if (test ! -x "$(which enchant-2)")
 then
     echo "Downloading Enchant 2"
-    wget -P ${ENCHANT2_INSTALL} ${ENCHANT2_SOURCE}/${ENCHANT2_FILE}.tar.gz
-    tar -xvzf ${ENCHANT2_INSTALL}/${ENCHANT2_FILE}.tar.gz -C ${ENCHANT2_INSTALL}
-    pushd ./${ENCHANT2_INSTALL}/${ENCHANT2_FILE} || { echo "Failed to change directory " ; exit 1; }
-    # ./configure
-    # make 
-    # make install prefix=${HOME}/.local/ exec-prefix=${HOME}
+    git clone ${ENCHAT2_GIT_REPO} ${ENCHANT2_INSTALL}
+    pushd ${ENCHANT2_INSTALL}
+    git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
+    ./configure 
+    make 
+    make install prefix=${HOME}/.local/ exec-prefix=${HOME}/.local/
 fi
+
+return 1
+
 
 # https://github.com/errata-ai/vale.git
 if (test ! -x "$(which vale)") && (test ! -d "${VALE_STYLE_DIR_PATH}/{VALE_STYLE_DIR_NAME}")
