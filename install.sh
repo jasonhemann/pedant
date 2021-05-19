@@ -5,6 +5,7 @@ set -o nounset
 set -eu -o pipefail
 
 SCRIPT_DIR=$(cd `dirname $0` && pwd)
+LOCAL_INSTALL_DIR="${HOME}/.local/"
 
 GIT_INSTALL="${SCRIPT_DIR}/.git_trash/"
 GIT_GIT_REPO="git://git.kernel.org/pub/scm/git/git.git"
@@ -22,18 +23,17 @@ ENCHANT2_INSTALL="${SCRIPT_DIR}/.enchant-2_trash/"
 
 VALE_GIT_REPO="https://github.com/errata-ai/vale.git"
 VALE_INSTALL="${SCRIPT_DIR}/.vale_trash/" 
-VALE_EXEC_LOC="${HOME}/.local/bin/"
+VALE_EXEC_LOC="${LOCAL_INSTALL_DIR}/bin/"
 
 VALE_STYLE_GIT_REPO="https://github.com/errata-ai/styles.git"
 VALE_STYLE_INSTALL="${SCRIPT_DIR}/.vale_style_trash/" 
+VALE_STYLE_LOC="${LOCAL_INSTALL_DIR}/styles/"
 
-VALE_STYLE_DIR_LOC="${HOME}"
-VALE_STYLE_DIR_NAME="./styles/"
-VALE_VERSION="2.10.3"
-VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/" 
-VALE_FILE="vale_${VALE_VERSION}_Linux_64-bit" 
+VALE_VERSION="2.10.3" \ 
+VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/" \ 
+VALE_FILE="vale_${VALE_VERSION}_Linux_64-bit"   
 
-NPM_INSTALL_DIR="${HOME}/.local/"
+NPM_INSTALL_DIR=${LOCAL_INSTALL_DIR}
 RETEXT_INSTALL_DIR="${HOME}/grammar/"
 
 ESPEAK_NG_VERSION="1.5"
@@ -82,7 +82,7 @@ then
     wget -P ${DICTION_INSTALL} ${DICTION_SOURCE}/${DICTION_FILE}.tar.gz
     tar -xvzf ${DICTION_INSTALL}/${DICTION_FILE}.tar.gz -C ${DICTION_INSTALL}
     pushd ${DICTION_INSTALL}/${DICTION_FILE} 
-    ./configure prefix=${HOME}/.local/
+    ./configure prefix=${LOCAL_INSTALL_DIR}
     make 
     make install 
 fi
@@ -95,47 +95,49 @@ then
     pushd ${ENCHANT2_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
     ./bootstrap
-    ./configure --prefix=${HOME}/.local/ --exec-prefix=${HOME}/.local/ --enable-relocatable --with-nuspell
+    ./configure --prefix=${LOCAL_INSTALL_DIR} --exec-prefix=${LOCAL_INSTALL_DIR} --enable-relocatable --with-nuspell
     make 
     make install 
 fi
 
-return 1
-
-if (test ! -x "$(which vale)") && (test ! -d "${VALE_STYLE_DIR_PATH}/{VALE_STYLE_DIR_NAME}")
+if (test ! -x "$(which vale)")
 then
     echo "Downloading vale"
-    git clone ${VALE_GIT_REPO} ${VALE_INSTALL}
-    pushd ${VALE_INSTALL}
-#    wget -P ${VALE_INSTALL} ${VALE_SOURCE}/${VALE_FILE}.tar.gz
-    #    tar -xvzf ${VALE_INSTALL}/${VALE_FILE}.tar.gz -C ${VALE_EXEC_LOC}
-    popd 
+    # This strategy doesn't seem to work, so ...
+    # git clone ${VALE_GIT_REPO} ${VALE_INSTALL}
+    # pushd ${VALE_INSTALL}
+    # make build os=linux
+    # mv ./bin/* ${VALE_EXEC_LOC}
+    # popd 
+    wget -P ${VALE_INSTALL} ${VALE_SOURCE}/${VALE_FILE}.tar.gz 
+    tar -xvzf ${VALE_INSTALL}/${VALE_FILE}.tar.gz -C ${VALE_EXEC_LOC}
+fi
+
+if (test ! -d "${VALE_STYLE_LOC}")
+then    
     echo "Downloading directory of styles" 
     git clone ${VALE_STYLE_GIT_REPO} ${VALE_STYLE_INSTALL}
     pushd ${VALE_STYLE_INSTALL}
     echo "We must now extract all styles to the right location"
-    # 
+    # Some way to get these styles in the right structure to ${VALE_STYLE_LOC}
 fi
 
-# https://www.gnu.org/software/libtool/manual/html_node/Invoking-libtoolize.html
-# LIBTOOLIZE, and the LTLIBRARIES 
-# autoreconf -fi
+return 1
+
 if (test ! -x "$(which espeak-ng)")
 then
     echo "Downloading espeak for anorack"
-    git clone ${ESPEAK_GIT_REPO} ${ESPEAK_INSTALL}
-    pushd ${ESPEAK_INSTALL}
+    git clone ${ESPEAK_GIT_REPO} ${ESPEAK_NG_INSTALL}
+    pushd ${ESPEAK_NG_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
-    libtoolize -i -f     
-    # wget -P ${ESPEAK_NG_INSTALL} ${ESPEAK_SOURCE}/${ESPEAK_FILE}
-    # tar -xvzf ${ESPEAK_SOURCE}/${ESPEAK_FILE} -C 
-    # echo "Double check that this installed to ~/.local/lib/, rather than ~/local/lib/"
-    # ./autogen.sh
-    ./autogen.sh
-    ./configure --prefix=${HOME}/.local/
-    # To work around a bug I found in the Makefile, just kill this line of config
+    autoreconf -fi
+    ./configure --prefix=${LOCAL_INSTALL_DIR}
+    # Makefile errors. Maybe b/c I'm missing Kramdown. 
+    # https://github.com/espeak-ng/espeak-ng/issues/941
+    # To work around that bug/limitation,
+    # I just kill this line of config
     # Hella brittle hack!!
-    # sed -i '2417s/.*/\#\#\#\#\#/'
+    sed -i '2417s/.*/\#\#\#\#\#/' Makefile
     make
     make install
 fi
@@ -153,7 +155,6 @@ then
 	retext-indefinite-article retext-english retext-passive retext-repeated-words retext-simplify -g # write-good not needed b/c vale
     ${NPM_INSTALL_DIR}/bin/babel --presets=env ${NPM_INSTALL_DIR}/lib/node_modules/to-vfile/ --out-dir ${NPM_INSTALL_DIR}/lib/node_modules/to-vfile/
     ${NPM_INSTALL_DIR}/bin/babel --presets=env ${NPM_INSTALL_DIR}/lib/node_modules/vfile-reporter/ --out-dir ${NPM_INSTALL_DIR}/lib/node_modules/vfile-reporter/
-    SCRIPT_DIR=$(cd `dirname $0` && pwd)
     if (test ! -d ${RETEXT_INSTALL_DIR})
     then
 	mkdir ${RETEXT_INSTALL_DIR}
@@ -168,6 +169,6 @@ then
     pushd ${ANORAK_INSTALL}
     ./configure
     make 
-    make install prefix=${HOME}/.local/ exec-prefix=${HOME}
+    make install prefix=${LOCAL_INSTALL_DIR} exec-prefix=${LOCAL_INSTALL_DIR}
 fi
 
