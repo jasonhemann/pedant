@@ -29,8 +29,8 @@ VALE_STYLE_GIT_REPO="https://github.com/errata-ai/styles.git"
 VALE_STYLE_INSTALL="${SCRIPT_DIR}/.vale_style_trash/" 
 VALE_STYLE_LOC="${LOCAL_INSTALL_DIR}/styles/"
 
-VALE_VERSION="2.10.3" \ 
-VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/" \ 
+VALE_VERSION="2.10.3" 
+VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/" 
 VALE_FILE="vale_${VALE_VERSION}_Linux_64-bit"   
 
 NPM_INSTALL_DIR=${LOCAL_INSTALL_DIR}
@@ -48,7 +48,7 @@ ANORAK_INSTALL="${SCRIPT_DIR}/.anorak_trash/"
 echo "Ensure that ~/.local/ subdirectories are on your path!"
 echo "PATH=~/.local/bin/:~/.local/etc/:~/.local/include/:~/.local/lib/:~/.local/libexec/:~/.local/share/:$PATH"
 
-if (test ! -x $(${GIT_EXEC_LOC}/git)) # && version check, but it's okay
+if (test ! -x ${LOCAL_INSTALL_DIR}/bin/git) # && version check, but it's okay
 then
     git clone ${GIT_GIT_REPO} ${GIT_INSTALL}
     pushd ${GIT_INSTALL}
@@ -70,6 +70,7 @@ then
     PATH=${VCPKG_INSTALL}/installed/x64-linux/share/:$PATH HOME=${HOME}/.local/ NO_TCLTK=true make install
     pushd ${VCPKG_INSTALL}
     CXX=g++ ./vcpkg install nuspell # It doesn't, however, seem to *give* me an ./bin/nuspell as e.g. aspell
+    ln -s vcpkg ${LOCAL_INSTALL_DIR}/bin/
 fi
     
 if (test ! -x "$(which style)") && (test ! -x "$(which diction)")
@@ -83,7 +84,6 @@ then
     make install 
 fi
 
-# Waiting on nuspell to finish setup for enchant-2
 if (test ! -x "$(which enchant-2)")
 then
     echo "Downloading Enchant 2"
@@ -168,6 +168,5 @@ then
     python3 -m pip install nose libcli # A dependency
     LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:~/.local/lib/ PREFIX="" DESTDIR="${HOME}/.local/" make -e
     LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:~/.local/lib/ PREFIX="" DESTDIR="${HOME}/.local/" make install -e
-
 fi
 
