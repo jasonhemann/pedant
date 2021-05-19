@@ -34,29 +34,25 @@ VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION
 VALE_FILE="vale_${VALE_VERSION}_Linux_64-bit"   
 
 NPM_INSTALL_DIR=${LOCAL_INSTALL_DIR}
-RETEXT_INSTALL_DIR="${HOME}/grammar/"
+RETEXT_INSTALL_DIR="${LOCAL_INSTALL_DIR}/share/retext/lib/"
 
 ESPEAK_NG_VERSION="1.5"
 ESPEAK_GIT_REPO="https://github.com/espeak-ng/espeak-ng.git"
 ESPEAK_SOURCE="https://github.com/espeak-ng/espeak-ng/releases/download/${ESPEAK_NG_VERSION}/"
 ESPEAK_NG_INSTALL="${SCRIPT_DIR}/.espeak-ng_trash/"
 ESPEAK_FILE="espeak-ng-${VALE_VERSION}.tgz"
-ESPEAK_DIR="espeak-ng"
 
+ANORAK_GIT_REPO="https://github.com/jwilk/anorack"
 ANORAK_INSTALL="${SCRIPT_DIR}/.anorak_trash/"
 
 echo "Ensure that ~/.local/ subdirectories are on your path!"
 echo "PATH=~/.local/bin/:~/.local/etc/:~/.local/include/:~/.local/lib/:~/.local/libexec/:~/.local/share/:$PATH"
 
-# https://www.gnu.org/software/libtool/manual/html_node/Invoking-libtoolize.html
-# LIBTOOLIZE, and the LTLIBRARIES 
-# autoreconf -fi
-
-if (test ! -x $(${GIT_EXEC_LOC}/git)) # &&  --version
+if (test ! -x $(${GIT_EXEC_LOC}/git)) # && version check, but it's okay
 then
     git clone ${GIT_GIT_REPO} ${GIT_INSTALL}
     pushd ${GIT_INSTALL}
-    git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
+    git checkout "$(git describe --tags --abbrev=0)" 
     libtoolize -i -f 
     HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make 
     HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make install
@@ -73,7 +69,7 @@ then
     PATH=${VCPKG_INSTALL}/installed/x64-linux/share/:$PATH HOME=${HOME}/.local/ NO_TCLTK=true make
     PATH=${VCPKG_INSTALL}/installed/x64-linux/share/:$PATH HOME=${HOME}/.local/ NO_TCLTK=true make install
     pushd ${VCPKG_INSTALL}
-    # ./vcpkg install nuspell # Currently breaks, perhaps vcpkg bug
+    CXX=g++ ./vcpkg install nuspell # It doesn't, however, seem to *give* me an ./bin/nuspell as e.g. aspell
 fi
     
 if (test ! -x "$(which style)") && (test ! -x "$(which diction)")
@@ -149,26 +145,29 @@ then
     then
 	mkdir ${NPM_INSTALL_DIR}
     fi
-    # babel-preset-es2015 babel-preset-env
-    npm install --prefix ${NPM_INSTALL_DIR} npx nspell babel-cli minimist dictionary-en \
+    npm install --prefix ${NPM_INSTALL_DIR} npx nspell minimist dictionary-en \
 	to-vfile unified vfile-reporter babel-preset-env retext-stringify retext-spell retext-readability \
-	retext-indefinite-article retext-english retext-passive retext-repeated-words retext-simplify -g # write-good not needed b/c vale
-    ${NPM_INSTALL_DIR}/bin/babel --presets=env ${NPM_INSTALL_DIR}/lib/node_modules/to-vfile/ --out-dir ${NPM_INSTALL_DIR}/lib/node_modules/to-vfile/
-    ${NPM_INSTALL_DIR}/bin/babel --presets=env ${NPM_INSTALL_DIR}/lib/node_modules/vfile-reporter/ --out-dir ${NPM_INSTALL_DIR}/lib/node_modules/vfile-reporter/
+	retext-indefinite-article retext-english retext-passive retext-repeated-words retext-simplify # write-good not needed b/c vale
+    npx babel-cli --presets=env ${NPM_INSTALL_DIR}/node_modules/to-vfile/ --out-dir ${NPM_INSTALL_DIR}/node_modules/to-vfile/
+    npx babel-cli --presets=env ${NPM_INSTALL_DIR}/node_modules/vfile-reporter/index.js --out-file ${NPM_INSTALL_DIR}/node_modules/vfile-reporter/index.js
     if (test ! -d ${RETEXT_INSTALL_DIR})
     then
 	mkdir ${RETEXT_INSTALL_DIR}
     fi
     cp ${SCRIPT_DIR}/retext-grammar.js ${RETEXT_INSTALL_DIR}
+    # Should also create a bash script ./bin/retext
+    # that will call ../shared/retext/lib/retext-grammar.js with the right cli args
 fi
 
+# Also somehow not working as expected/intended
 if (test ! -x "$(which anorack)")
 then
     echo "Downloading anorack"
-    git clone https://github.com/jwilk/anorack  ${ANORAK_INSTALL}
+    git clone ${ANORAK_GIT_REPO} ${ANORAK_INSTALL}
     pushd ${ANORAK_INSTALL}
-    ./configure
-    make 
-    make install prefix=${LOCAL_INSTALL_DIR} exec-prefix=${LOCAL_INSTALL_DIR}
+    python3 -m pip install nose libcli # A dependency
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:~/.local/lib/ PREFIX="" DESTDIR="${HOME}/.local/" make -e
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:~/.local/lib/ PREFIX="" DESTDIR="${HOME}/.local/" make install -e
+
 fi
 
