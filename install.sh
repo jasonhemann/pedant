@@ -6,12 +6,8 @@ set -eu -o pipefail
 
 SCRIPT_DIR=$(cd `dirname $0` && pwd)
 
-CURL_GIT_REPO="https://github.com/curl/curl.git"
-CURL_INSTALL="${SCRIPT_DIR}/.curl_trash/"
-
 GIT_INSTALL="${SCRIPT_DIR}/.git_trash/"
 GIT_GIT_REPO="git://git.kernel.org/pub/scm/git/git.git"
-GIT_EXEC_LOC="${HOME}/.local/bin/"
 
 DICTION_VERSION="1.11"
 DICTION_SOURCE="https://ftp.gnu.org/gnu/diction/"
@@ -56,7 +52,7 @@ then
     pushd ${GIT_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
     libtoolize -i -f 
-    HOME=${HOME}/.local/ NO_TCLTK=true make 
+    HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make 
     HOME=${HOME}/.local/ NO_CURL=true NO_TCLTK=true make install
 fi     
 
@@ -86,7 +82,6 @@ then
 fi
 
 # Waiting on nuspell to finish setup for enchant-2
-# Might need nuspell by itself on the command line.
 if (test ! -x "$(which enchant-2)")
 then
     echo "Downloading Enchant 2"
@@ -94,7 +89,7 @@ then
     pushd ${ENCHANT2_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
     ./bootstrap
-    ./configure --prefix=${HOME}/.local/ --exec-prefix=${HOME}/.local/ --enable-relocatable
+    ./configure --prefix=${HOME}/.local/ --exec-prefix=${HOME}/.local/ --enable-relocatable --with-nuspell
     make 
     make install 
 fi
