@@ -21,10 +21,8 @@ DICTION_FILE="diction-${DICTION_VERSION}"
 VCPKG_GIT_REPO="https://github.com/microsoft/vcpkg"
 VCPKG_INSTALL="${SCRIPT_DIR}/.vcpkg_trash/"
 
-ENCHANT2_VERSION="2.2.15"
 ENCHAT2_GIT_REPO="https://github.com/AbiWord/enchant.git"
 ENCHANT2_INSTALL="${SCRIPT_DIR}/.enchant-2_trash/"
-ENCHANT2_FILE="enchant-${ENCHANT2_VERSION}"
 
 VALE_VERSION="2.10.3" 
 VALE_SOURCE="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/" 
@@ -88,7 +86,6 @@ then
 fi
 
 # Waiting on nuspell to finish setup for enchant-2
-# https://github.com/AbiWord/enchant.git
 # Might need nuspell by itself on the command line.
 if (test ! -x "$(which enchant-2)")
 then
@@ -96,13 +93,13 @@ then
     git clone ${ENCHAT2_GIT_REPO} ${ENCHANT2_INSTALL}
     pushd ${ENCHANT2_INSTALL}
     git checkout "$(git describe --tags --abbrev=0)" # not the most recent but this will do.
-    ./configure 
+    ./bootstrap
+    ./configure --prefix=${HOME}/.local/ --exec-prefix=${HOME}/.local/ --enable-relocatable
     make 
-    make install prefix=${HOME}/.local/ exec-prefix=${HOME}/.local/
+    make install 
 fi
 
 return 1
-
 
 # https://github.com/errata-ai/vale.git
 if (test ! -x "$(which vale)") && (test ! -d "${VALE_STYLE_DIR_PATH}/{VALE_STYLE_DIR_NAME}")
